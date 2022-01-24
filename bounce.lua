@@ -54,8 +54,8 @@ local ground_friction = 0.95
 local elasticity = 0.8
 
 --- find the named scene item and its original position in the current scene
-local function find_scene_item()
-   local source = obs.obs_frontend_get_current_scene()
+local function find_scene_item(scene_source)
+   local source = scene_source or obs.obs_frontend_get_current_scene()
    if not source then
       print('there is no current scene')
       return
@@ -63,8 +63,24 @@ local function find_scene_item()
    scene_width = obs.obs_source_get_width(source)
    scene_height = obs.obs_source_get_height(source)
    local scene = obs.obs_scene_from_source(source)
-   obs.obs_source_release(source)
-   scene_item = obs.obs_scene_find_source(scene, source_name)
+   if not scene_source then
+      obs.obs_source_release(source)
+   end
+   for _, item in ipairs(obs.obs_scene_enum_items(scene)) do
+      local item_source = obs.obs_sceneitem_get_source(item)
+      local item_source_name = obs.obs_source_get_name(item_source)
+      local item_source_type = obs.obs_source_get_type(item_source)
+     
+      if item_source_type == obs.OBS_SOURCE_TYPE_SCENE then
+         if find_scene_item(item_source) then
+            break
+         end
+      elseif item_source_type == obs.OBS_SOURCE_TYPE_INPUT and item_source_name == source_name then
+         scene_item = item
+         break;
+      end
+   end
+   
    if scene_item then
       original_pos = get_scene_item_pos(scene_item)
       return true
